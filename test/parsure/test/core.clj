@@ -56,7 +56,7 @@
   (is (assert-fail (p- (many1 digit) "abcdef")))
   (is (assert-val (p- ident "abc def") "abc"))
   (is (assert-val (p- nat "123 abc") 123))
-  (is (assert-val (p- space "  abc") nil))
+  (is (assert-val (p- spaces "  abc") nil))
   )
 
 (def p4
