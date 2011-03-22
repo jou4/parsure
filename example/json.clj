@@ -1,4 +1,4 @@
-(use 'parsure.core)
+(use 'parsure.core :reload)
 
 (defn make-json-atom [s] (list 'atom s))
 (defn make-json-number [i] (list 'number i))
@@ -10,33 +10,33 @@
 (declare parse-expr parse-symbol parse-atom parse-number
          parse-string parse-list parse-hash)
 
-(def parse-symbol (defparser (one-of "$")))
+(defparser parse-symbol (one-of "$"))
 
-(def parse-expr
-  (defparser (doplus parse-atom
-                     parse-number
-                     (parse-string \')
-                     (parse-string \")
-                     (dobind [_ (ch \[)
-                              x parse-list
-                              _ (ch \])]
-                             (return x))
-                     (dobind [_ (ch \{)
-                              x parse-hash
-                              _ (ch \})]
-                             (return x))
-                     (failure "Not matched any json-expression."))))
+(defparser parse-expr
+  (doplus parse-atom
+          parse-number
+          (parse-string \')
+          (parse-string \")
+          (dobind [_ (ch \[)
+                   x parse-list
+                   _ (ch \])]
+                  (return x))
+          (dobind [_ (ch \{)
+                   x parse-hash
+                   _ (ch \})]
+                  (return x))
+          (failure "Not matched any json-expression.")))
 
-(def parse-atom
-  (defparser (dobind [f (doplus letter parse-symbol)
-                      r (many (doplus letter digit parse-symbol))]
-                     (let [at (apply str (cons f r))]
-                       (cond (= at "true") (return (make-json-bool true))
-                             (= at "false") (return (make-json-bool false))
-                             :else (return (make-json-atom at)))))))
+(defparser parse-atom
+  (dobind [f (doplus letter parse-symbol)
+           r (many (doplus letter digit parse-symbol))]
+          (let [at (apply str (cons f r))]
+            (cond (= at "true") (return (make-json-bool true))
+                  (= at "false") (return (make-json-bool false))
+                  :else (return (make-json-atom at))))))
 
-(def parse-number
-  (defparser (lift make-json-number natural)))
+(defparser parse-number
+  (lift make-json-number natural))
 
 (defn parse-string [qt]
   (defparser (dobind [_ (ch qt)
@@ -44,20 +44,20 @@
                       _ (ch qt)]
                      (return (make-json-string (apply str x))))))
 
-(def parse-list
-  (defparser (lift make-json-list
-                   (sep-by parse-expr (dobind_ space (ch \,) space)))))
+(defparser parse-list
+  (lift make-json-list
+        (sep-by parse-expr (dobind_ space (ch \,) space))))
 
-(def parse-pair
-  (defparser (dobind [n (doplus (parse-string \') (parse-string \") parse-atom)
-                      _ (dobind_ space (ch \:) space)
-                      v parse-expr]
-                     (let [nm (nth n 1)]
-                       (return (list nm v))))))
+(defparser parse-pair
+  (dobind [n (doplus (parse-string \') (parse-string \") parse-atom)
+           _ (dobind_ space (ch \:) space)
+           v parse-expr]
+          (let [nm (nth n 1)]
+            (return (list nm v)))))
 
-(def parse-hash
-  (defparser (lift make-json-hash
-                   (sep-by parse-pair (dobind_ space (ch \,) space)))))
+(defparser parse-hash
+  (lift make-json-hash
+        (sep-by parse-pair (dobind_ space (ch \,) space))))
 
 
 (defn run [s]

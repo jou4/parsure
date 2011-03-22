@@ -90,8 +90,9 @@
         (fn [x] (return (f x)))))
 
 ;; Utilities
-(defmacro defparser [p]
-  `(delay ~p))
+(defmacro defparser
+  ([p] `(delay ~p))
+  ([name p] `(def ~name (delay ~p))))
 
 (defn- add-bind [m step]
   (let [[v expr] step]
