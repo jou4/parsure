@@ -70,7 +70,7 @@
                                  (rest inp))]
         (list 'success c new-st)))))
 ;; - parse :: Parser a -> String -> [a state]
-(defn parse [p st] (p st))
+(defn parse [p st] ((force p) st))
 ;; - bind :: Parser a -> (a -> Parser b) -> Parser b
 (defn bind [p f]
   (fn [st]
@@ -90,6 +90,9 @@
         (fn [x] (return (f x)))))
 
 ;; Utilities
+(defmacro defparser [p]
+  `(delay ~p))
+
 (defn- add-bind [m step]
   (let [[v expr] step]
     (list 'bind expr (list 'fn [v] m))))
