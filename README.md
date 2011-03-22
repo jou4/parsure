@@ -1,6 +1,6 @@
 # parsure
 
-Text parser combinators like parsec. This is unstable because this is still developing.
+Parsure is a Text parser combinator library like Parsec for Clojure. This is still unstable.
 
 ## Usage
 
