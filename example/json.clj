@@ -10,6 +10,11 @@
 (declare parse-expr parse-symbol parse-atom parse-number
          parse-string parse-list parse-hash)
 
+(defn trim [p] (dobind [_ spaces
+                        x p
+                        _ spaces]
+                       (return x)))
+
 (defparser parse-symbol (one-of "$"))
 
 (defparser parse-expr
@@ -46,18 +51,18 @@
 
 (defparser parse-list
   (lift make-json-list
-        (sep-by parse-expr (dobind_ space (ch \,) space))))
+        (sep-by parse-expr (trim (ch \,)))))
 
 (defparser parse-pair
   (dobind [n (doplus (parse-string \') (parse-string \") parse-atom)
-           _ (dobind_ space (ch \:) space)
+           _ (trim (ch \:))
            v parse-expr]
           (let [nm (nth n 1)]
             (return (list nm v)))))
 
 (defparser parse-hash
   (lift make-json-hash
-        (sep-by parse-pair (dobind_ space (ch \,) space))))
+        (sep-by parse-pair (trim (ch \,)))))
 
 
 (defn run [s]

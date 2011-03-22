@@ -201,13 +201,14 @@
                    (return (apply str (cons x xs)))))
 (def nat (dobind [xs (many1 digit)]
                  (return (Integer/parseInt (apply str xs)))))
-(def space (dobind [_ (many (satisfy #(Character/isSpaceChar %)))]
-                   (return nil)))
-(def whitespace (dobind [_ (many (satisfy #(Character/isWhitespace %)))]
-                        (return nil)))
+
+(defn skip-many [p] (dobind [_ (many (satisfy p))]
+                            (return nil)))
+
+(def spaces (skip-many #(Character/isWhitespace %)))
 
 (defn lexeme [p] (dobind [v p
-                          _ whitespace]
+                          _ spaces]
                          (return v)))
 
 (def identifier (lexeme ident))
