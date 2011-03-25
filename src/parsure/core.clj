@@ -1,228 +1,161 @@
 (ns parsure.core
-  (:use [parsure.char]))
+  (:use [clojure.contrib.monads]
+        [parsure.monad-ext]))
 
-; ;; Parser a :: String -> [a String]
-; ;; return :: a -> Parser a
-; (defn return [v] (fn [inp] (list v inp)))
-; ;; failure :: Parser a
-; (defn failure
-  ; ([] (failure ""))
-  ; ([msg] (fn [inp] nil)))
-; ;; item :: Parser Char
-; (defn item [inp]
-  ; (if (= (count inp) 0)
-    ; nil
-    ; (list (first inp) (rest inp))))
-; ;; parse :: Parser a -> String -> [a String]
-; (defn parse [p inp] (p inp))
-; ;; bind :: Parser a -> (a -> Parser b) -> Parser b
-; (defn bind [p f]
-  ; (fn [inp]
-    ; (let [ret (parse p inp)]
-      ; (if (nil? ret)
-        ; nil
-        ; (let [[v out] ret]
-          ; (parse (f v) out))))))
-; ;; Parser a -> Parser a -> Parser a
-; (defn plus [p q]
-  ; (fn [inp]
-    ; (let [ret (parse p inp)]
-      ; (if (nil? ret)
-        ; (parse q inp)
-        ; ret))))
-; ;; (a -> b) -> Parser a -> Parser b
-; (defn lift [f m]
-  ; (dobind [x m]
-          ; (return (f x))))
+;; Do parse
+(defn parse [p inp] ((force p) inp))
+(defn parse-from-string [p inp] (parse p inp))
 
-;; State
-(defn new-state [inp] {:input inp :pos [0 0]})
-(defn update-state [st k v] (assoc st k v))
-(defn update-input [st inp] (update-state st :input inp))
-(defn update-pos [st pos] (update-state st :pos pos))
-(defn get-input [st] (st :input))
-(defn get-pos [st] (st :pos))
-
-;; Output
-(defn success? [[rs v st]] (= rs 'success))
-(defn failed? [[rs v st]] (= rs 'failed))
-(defn eos? [[rs v st]] (= rs 'eos))
-(defn get-value [[rs v st]] v)
-(defn get-state [[rs v st]] st)
-
-;; Primitives
-;; - return :: a -> Parser a
-(defn return [v] (fn [st] (list 'success v st)))
-;; - failure :: String -> Parser a
-(defn failure
-  ([] (failure ""))
-  ([msg] (fn [st] (list 'failed msg st))))
-;; - item :: Parser Char
-(defn item [st]
-  (let [inp (get-input st)]
-    (if (= (count inp) 0)
-      (list 'failed nil st)
-      (let [c (first inp)
-            [col line] (get-pos st)
-            new-pos [(if (= \newline c) 0 (+ col 1))
-                     (if (= \newline c) (+ line 1) line)]
-            new-st (update-input (update-pos st new-pos)
-                                 (rest inp))]
-        (list 'success c new-st)))))
-;; - parse :: Parser a -> String -> [a state]
-(defn parse [p st] ((force p) st))
-;; - bind :: Parser a -> (a -> Parser b) -> Parser b
-(defn bind [p f]
-  (fn [st]
-    (let [ret (parse p st)]
-      (cond (success? ret) (parse (f (get-value ret))
-                                  (get-state ret))
-            :else ret))))
-;; - plus :: Parser a -> Parser a -> Parser a
-(defn plus [p q]
-  (fn [st]
-    (let [ret (parse p st)]
-      (cond (success? ret) ret
-            :else (parse q st)))))
-;; - lift :: (a -> b) -> Parser a -> Parser b
-(defn lift [f m]
-  (bind m
-        (fn [x] (return (f x)))))
-
-;; Utilities
+;; Define parser combinator
 (defmacro defparser
-  ([p] `(delay ~p))
-  ([name p] `(def ~name (delay ~p))))
+  ([name body] `(def ~name (delay ~body)))
+  ([name args body] `(defn ~name ~args ~body)))
 
-(defn- add-bind [m step]
-  (let [[v expr] step]
-    (list 'bind expr (list 'fn [v] m))))
+;; Parser monad transformer
+(defn parser-t
+  ([m] (parser-t m :m-plus-from-transformer))
+  ([m which-m-plus]
+   (monad-transformer m which-m-plus
+     [m-result (with-monad m
+                 (fn [v]
+                   (fn [inp] (m-result [v inp]))))
+      m-bind   (with-monad m
+                 (fn [p f]
+                   (fn [inp]
+                     (let [ret (parse p inp)]
+                       (m-bind ret
+                               (fn [[v out]]
+                                 (parse (f v) out)))))))
+      m-zero   (with-monad m (fn [inp] m-zero))
+      m-plus   (with-monad m
+                 (fn [& ps]
+                   (fn [inp]
+                     (apply m-plus (map #(parse % inp) ps)))))
+      ])))
 
-(defmacro dobind [steps expr]
-  (let [rsteps (reverse (partition 2 steps))]
-    (reduce add-bind expr rsteps)))
+;; with-monad for parser-monad
+(defmacro with-parser [monad & exprs]
+  `(with-transformed-monad ~monad ~@exprs))
 
-(defmacro dobind_ [& steps]
-  (let [rsteps (reverse (map #(list '_ %) steps))
-        [_ ls] (first rsteps)]
-    (reduce add-bind ls (rest rsteps))))
+;; lift function
+(defmacro parser-t$ [mv]
+  `(fn [s#]
+     (with-monad m-base
+       (domonad [v# ~mv]
+         [v# s#]))))
 
-(defn- add-plus [m expr]
-  (list 'plus expr m))
+;; Build parser
+(defmacro build-parser [name transformer base-m & exprs]
+  `(def-transformed-monad
+     ~name ~transformer ~base-m (attach-parsers ~name) ~@exprs))
 
-(defmacro doplus [& exprs]
-  (let [rexprs (reverse exprs)]
-    (reduce add-plus rexprs)))
+(declare basic-parser-combinators)
+(defmacro attach-parsers [monad]
+  `(with-parser ~monad
+     ~@basic-parser-combinators))
 
-(defmacro docatch [expr msg]
-  `(doplus ~expr (failure ~msg)))
+;; Basic parser combinators
+(def basic-parser-combinators
+  '(
 
-;; Chars
-(defn satisfy [p]
-  (dobind [x item]
-          (let [ret (p x)]
-            (if ret
-              (return x)
-              (failure "Not expected.")))))
+    (defn fail [e] (fn [st] nil))
+    (defn failure [e]
+      (fn [st]
+        (if (nil? fail)
+          (with-monad m-base m-zero)
+          ((fail e) st))))
 
-(def digit (docatch (satisfy digit?)
-                    "Expected digit."))
-(def lower (docatch (satisfy lower?)
-                    "Expected lower."))
-(def upper (docatch (satisfy upper?)
-                    "Expected upper."))
-(def letter (docatch (satisfy letter?)
-                     "Expected letter."))
-(def alpha-num (docatch (satisfy #(or (digit? %) (letter? %)))
-                        "Expected alphabet or number."))
-(defn ch [x] (docatch (satisfy #(= x %))
-                      (str "Expected char '" x "'")))
+    (defn item [inp]
+      (if (= (count inp) 0)
+        ((failure "No chars.") inp)
+        (with-monad m-base (m-result [(first inp) (rest inp)]))))
 
-;; Combinators
-(declare many many1)
-(defn many [p]
-  (plus (many1 p)
-        (return nil)))
-(defn many1 [p]
-  (dobind [v p
-           vs (many p)]
-          (return (cons v vs))))
+    (defn m-catch [mv msg]
+      (m-plus mv
+              (failure (str "Expected " msg))))
 
-(defn one-of [s]
-  (dobind [x item]
-          (if ((set s) x)
-            (return x)
-            (failure))))
-(defn none-of [s]
-  (dobind [x item]
-          (if ((set s) x)
-            (failure)
-            (return x))))
+    (defn satisfy [pred]
+      (domonad [x item
+                :when (pred x)]
+        x))
 
-(declare sep-by sep-by-1)
-(defn sep-by [p sep]
-  (plus (sep-by-1 p sep) (return nil)))
-(defn sep-by-1 [p sep]
-  (dobind [x p
-           xs (many (dobind_ sep p))]
-          (return (cons x xs))))
+    (defn ch [x] (satisfy #(= x %)))
 
-(declare sep-end-by sep-end-by-1)
-(defn sep-end-by [p sep]
-  (plus (sep-end-by-1 p sep) (return nil)))
-(defn sep-end-by-1 [p sep]
-  (dobind [x p]
-          (plus (dobind [_ sep
-                         xs (sep-end-by p sep)]
-                        (return (cons x xs)))
-                (return (list x)))))
+    (defn- digit?  [c] (Character/isDigit c))
+    (defn- lower?  [c] (Character/isLowerCase c))
+    (defn- upper?  [c] (Character/isUpperCase c))
+    (defn- letter? [c] (Character/isLetter c))
+    (defn- space?  [c] (Character/isWhitespace c))
 
-(declare end-by end-by-1)
-(defn end-by [p sep]
-  (many (dobind [x p
-                 _ sep]
-                (return x))))
-(defn end-by-1 [p sep]
-  (many1 (dobind [x p
-                  _ sep]
-                 (return x))))
+    (def digit (satisfy digit?))
+    (def lower (satisfy lower?))
+    (def upper (satisfy upper?))
+    (def letter (satisfy letter?))
+    (def alpha-num (satisfy #(or (digit? %) (letter? %))))
 
-;; Tokens
-(defn string
-  ([s]
-   (if (= 0 (count s))
-     (return "")
-     (dobind [_ (ch (first s))
-              _ (string (subs s 1))]
-             (return s)))))
+    (declare many many1)
+    (defn many [p]
+      (m-plus (many1 p)
+              (m-result nil)))
+    (defn many1 [p]
+      (domonad [v  p
+                vs (many p)]
+        (cons v vs)))
 
-(def ident (dobind [x lower
-                    xs (many alpha-num)]
-                   (return (apply str (cons x xs)))))
-(def nat (dobind [xs (many1 digit)]
-                 (return (Integer/parseInt (apply str xs)))))
+    (defn one-of [s]
+      (domonad [x item
+                :when ((set s) x)]
+        x))
+    (defn none-of [s]
+      (domonad [x item
+                :when (nil? ((set s) x))]
+        x))
 
-(defn skip-many [p] (dobind [_ (many (satisfy p))]
-                            (return nil)))
+    (declare sep-by sep-by1)
+    (defn sep-by [p sep]
+      (m-plus (sep-by1 p sep) (m-result nil)))
+    (defn sep-by1 [p sep]
+      (domonad [x  p
+                xs (many (m-bind_ sep p))]
+        (cons x xs)))
 
-(def spaces (skip-many #(Character/isWhitespace %)))
+    (defn end-by [p sep]
+      (many (domonad [x p
+                      _ sep]
+              x)))
+    (defn end-by1 [p sep]
+      (many1 (domonad [x p
+                       _ sep]
+               x)))
 
-(defn lexeme [p] (dobind [v p
-                          _ spaces]
-                         (return v)))
+    (defn string [s]
+      (m-catch
+        (if (= 0 (count s))
+          (m-result "")
+          (domonad [_ (ch (first s))
+                    _ (string (subs s 1))]
+            s))
+        (str "string : " s)))
 
-(def identifier (lexeme ident))
-(def natural (lexeme nat))
-(defn sym [s] (lexeme (string s)))
+    (defn skip-many [p]
+      (domonad [_ (many p)] nil))
 
-;; Parse interfaces
-(defn parse-from-string [p inp] (parse p (new-state inp)))
-(defn parse-test [p inp]
-  (let [ret (parse-from-string p inp)
-        value (get-value ret)
-        state (get-state ret)
-        [col line] (get-pos state)]
-    (if (failed? ret)
-      (println (str value " (" "col:" col " line:" line ")"))
-      value)))
+    (def spaces (skip-many (satisfy space?)))
 
+    (def identifier
+      (m-catch
+        (domonad [x  lower
+                  xs (many alpha-num)]
+          (apply str (cons x xs)))
+        "identifier"))
+
+    (def natural
+      (m-catch
+        (domonad [xs (many1 digit)]
+          (Integer/parseInt (apply str xs)))
+        "natural"))
+
+    ))
+
+;; Default parser monad
+(build-parser parser-m parser-t maybe-m)
