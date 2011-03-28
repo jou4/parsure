@@ -1,6 +1,7 @@
 (ns parsure.core
   (:use [clojure.contrib.monads]
-        [parsure.monad-ext]))
+        [parsure.monad-ext])
+  (:require [clojure.contrib.str-utils2 :as su]))
 
 ;; Do parse
 (defn parse [p inp] ((force p) inp))
@@ -68,7 +69,7 @@
     (defn item [inp]
       (if (= (count inp) 0)
         ((failure "No chars.") inp)
-        (with-monad m-base (m-result [(first inp) (rest inp)]))))
+        (with-monad m-base (m-result [(su/get inp 0) (su/drop inp 1)]))))
 
     (defn m-catch [mv msg]
       (m-plus mv
@@ -104,11 +105,11 @@
 
     (defn one-of [s]
       (domonad [x item
-                :when ((set s) x)]
+                :when (su/contains? s (str x))]
         x))
     (defn none-of [s]
       (domonad [x item
-                :when (nil? ((set s) x))]
+                :when (not (su/contains? s (str x)))]
         x))
 
     (declare sep-by sep-by1)
@@ -132,8 +133,8 @@
       (m-catch
         (if (= 0 (count s))
           (m-result "")
-          (domonad [_ (ch (first s))
-                    _ (string (subs s 1))]
+          (domonad [_ (ch (su/get s 0))
+                    _ (string (su/drop s 1))]
             s))
         (str "string : " s)))
 

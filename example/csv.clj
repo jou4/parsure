@@ -35,5 +35,5 @@
 
 (defn run [s] (parse-from-string parse-csv s))
 
-(def sample-string "1,n0153,\"Kamitsukasa Kazuyoshi\"\n2,n0154,\"Yamada \"\"Razoku!!\"\" Daisuke\"")
+(def sample-string "1,n0153,\"上司　和善\"\n2,n0154,\"山田 \"\"Razoku!!\"\" 大輔\"")
 (run sample-string)
