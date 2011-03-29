@@ -1,4 +1,5 @@
 (ns parsure.monad-ext
+  (:refer-clojure :exclude [do])
   (:use [clojure.contrib.monads]
         [clojure.contrib.macro-utils :only (defsymbolmacro)]))
 
@@ -10,7 +11,6 @@
        ~@exprs
        )))
 
-(declare m-bind_)
 (defmacro with-transformed-monad [monad & exprs]
   `(let [~'m-base (:m-base ~monad)]
      (with-monad ~monad ~@exprs)))
@@ -23,37 +23,12 @@
     (reverse steps)))
 
 
-;; Error monad
-(defmonad error-m
-  [m-result (fn [v] (list 'Right v))
-   m-bind   (fn [mv f]
-              (if (= 'Right (first mv))
-                (f (second mv))
-                mv))
-   m-zero   (list 'Left nil)
-   m-plus   (fn [& mvs]
-              (defn iter [mvs]
-                (if (= (count mvs) 1)
-                  (first mvs)
-                  (let [[lr v] (first mvs)]
-                    (if (= 'Left lr)
-                      (iter (rest mvs))
-                      (list lr v)))))
-              (iter mvs))
-   ])
-
-;; Error monad transformer
-(defn error-t
-  ([m] (error-t m :m-plus-default))
-  ([m which-m-plus]
-   (monad-transformer m which-m-plus
-     [m-result (with-monad m
-                 (fn [v] (m-result (list 'Right v))))
-      m-bind   (with-monad m
-                 (fn [mv f]
-                   (m-bind mv
-                           (fn [x]
-                             (if (= 'Left (first x))
-                               (m-result x)
-                               (f (second x)))))))
-      ])))
+;; Monad function alias
+(defmacro do [steps expr] `(domonad ~steps ~expr))
+(defmacro >>= [mv f] `(m-bind ~mv ~f))
+(defmacro >> [& mvs] `(m-bind_ ~@mvs))
+(defmacro return [v] `(m-result ~v))
+(defmacro <|> [& mvs] `(m-plus ~@mvs))
+(defmacro fmap [f m] `(m-fmap ~f ~m))
+(defmacro lift-m [n f] `(m-lift ~n ~f))
+(defmacro join [m] `(m-join ~m))
