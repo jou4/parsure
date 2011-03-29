@@ -1,33 +1,32 @@
-(use 'clojure.contrib.monads)
-(use 'parsure.core :reload)
-(use 'parsure.monad-ext :reload)
+(use 'parsure.core)
+(require '[clojure.contrib.monads :as m])
 
 (defn make-csv-line      [l] (list 'Line l))
 (defn make-csv-quoted    [s] (list 'Quoted s))
 (defn make-csv-nonquoted [s] (list 'Non-quoted s))
 
-(with-parser parser-m
+(with-parser-monad parser-m
   (defparser parse-quoted-inner
-    (domonad [xs (many (none-of "\""))
-              xs2 (m-plus (domonad [_ (string "\"\"")
-                                    xs parse-quoted-inner]
-                            (str "\"" xs))
-                          (m-result ""))]
-      (str (apply str xs) xs2)))
+    (m/domonad [xs (many (none-of "\""))
+                xs2 (m-plus (m/domonad [_ (string "\"\"")
+                                        xs parse-quoted-inner]
+                                       (str "\"" xs))
+                            (m-result ""))]
+               (str (apply str xs) xs2)))
 
   (defparser parse-quoted
-    (domonad [_ (ch \")
-              x parse-quoted-inner
-              _ (ch \")]
-      (make-csv-quoted x)))
+    (m/domonad [_ (ch \")
+                x parse-quoted-inner
+                _ (ch \")]
+               (make-csv-quoted x)))
 
   (defparser parse-nonquoted
-    (m-fmap #(make-csv-nonquoted (apply str %))
-            (many (none-of ",\n"))))
+    (m/m-fmap #(make-csv-nonquoted (apply str %))
+              (many (none-of ",\n"))))
 
   (defparser parse-line
-    (m-fmap make-csv-line
-            (sep-by1 (m-plus parse-quoted parse-nonquoted) (ch \,))))
+    (m/m-fmap make-csv-line
+              (sep-by1 (m-plus parse-quoted parse-nonquoted) (ch \,))))
 
   (defparser parse-csv
     (sep-by1 parse-line (ch \newline)))

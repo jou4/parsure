@@ -10,6 +10,7 @@
        ~@exprs
        )))
 
+(declare m-bind_)
 (defmacro with-transformed-monad [monad & exprs]
   `(let [~'m-base (:m-base ~monad)]
      (with-monad ~monad ~@exprs)))

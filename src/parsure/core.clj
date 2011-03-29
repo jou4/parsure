@@ -35,7 +35,7 @@
       ])))
 
 ;; with-monad for parser-monad
-(defmacro with-parser [monad & exprs]
+(defmacro with-parser-monad [monad & exprs]
   `(with-transformed-monad ~monad ~@exprs))
 
 ;; lift function
@@ -52,7 +52,7 @@
 
 (declare basic-parser-combinators)
 (defmacro attach-parsers [monad]
-  `(with-parser ~monad
+  `(with-parser-monad ~monad
      ~@basic-parser-combinators))
 
 ;; Basic parser combinators
