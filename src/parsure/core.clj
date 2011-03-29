@@ -3,9 +3,15 @@
         [parsure.monad-ext])
   (:require [clojure.contrib.str-utils2 :as su]))
 
+
+;; Parser state
+(defn new-state [input]
+  {:input input
+   :pos   [0 0]})
+
 ;; Do parse
-(defn parse [p inp] ((force p) inp))
-(defn parse-from-string [p inp] (parse p inp))
+(defn parse [p st] ((force p) st))
+(defn parse-from-string [p inp] (parse p (new-state inp)))
 
 ;; Define parser combinator
 (defmacro defparser
@@ -19,37 +25,42 @@
    (monad-transformer m which-m-plus
      [m-result (with-monad m
                  (fn [v]
-                   (fn [inp] (m-result [v inp]))))
+                   (fn [st] (m-result [v st]))))
       m-bind   (with-monad m
                  (fn [p f]
-                   (fn [inp]
-                     (let [ret (parse p inp)]
+                   (fn [st]
+                     (let [ret (parse p st)]
                        (m-bind ret
                                (fn [[v out]]
                                  (parse (f v) out)))))))
-      m-zero   (with-monad m (fn [inp] m-zero))
+      m-zero   (with-monad m (fn [st] m-zero))
       m-plus   (with-monad m
                  (fn [& ps]
-                   (fn [inp]
-                     (apply m-plus (map #(parse % inp) ps)))))
+                   (fn [st]
+                     (apply m-plus (map #(parse % st) ps)))))
       ])))
 
 ;; Parser error monad
+(defn- parser-error-ok [v] (list 'Right v))
+(defn- parser-error-ng [v] (list 'Left v))
+(defn- parser-error-status [m] (first m))
+(defn- parser-error-value  [m] (second m))
+(defn- parser-error-ok? [m] (= 'Right (parser-error-status m)))
+(defn- parser-error-ng? [m] (not (parser-error-ok? m)))
+
 (defmonad parser-error-m
-  [m-result (fn [v] (list 'Right v))
+  [m-result parser-error-ok
    m-bind   (fn [mv f]
-              (if (= 'Right (first mv))
-                (f (second mv))
+              (if (parser-error-ok? mv)
+                (f (parser-error-value mv))
                 mv))
-   m-zero   (list 'Left nil)
+   m-zero   (parser-error-ng nil)
    m-plus   (fn [& mvs]
               (loop [mvs mvs]
-                (if (= (count mvs) 1)
-                  (first mvs)
-                  (let [[lr v] (first mvs)]
-                    (if (= 'Left lr)
-                      (recur (rest mvs))
-                      (list lr v))))))
+                (if (and (parser-error-ng? (first mvs))
+                         (next mvs))
+                  (recur (next mvs))
+                  (first mvs))))
    ])
 
 ;; with-monad for parser-monad
@@ -69,17 +80,25 @@
 ;; Basic parser combinators
 (with-parser-monad parser-m
 
-  (defn fail [e] (fn [st] (list 'Left e)))
+  (defn fail [e] (fn [st] (parser-error-ng [e st])))
   (defn failure [e]
     (fn [st]
       (if (nil? fail)
         (with-monad m-base m-zero)
         ((fail e) st))))
 
-  (defn item [inp]
-    (if (= (count inp) 0)
-      ((failure "No chars.") inp)
-      (with-monad m-base (m-result [(su/get inp 0) (su/drop inp 1)]))))
+  (defn item [st]
+    (let [inp (:input st)
+          [col line] (:pos st)]
+      (if (= (count inp) 0)
+        ((failure "No chars.") st)
+        (let [next-char (su/get inp 0)
+              rest-char (su/drop inp 1)
+              new-pos   (if (= \newline next-char)
+                          [0 (+ line 1)]
+                          [(+ col 1) line])
+              new-st    (assoc st :input rest-char :pos new-pos)]
+          (with-monad m-base (m-result [next-char new-st]))))))
 
   (defn m-catch [mv msg]
     (m-plus mv
@@ -167,4 +186,3 @@
       "natural"))
 
   )
-

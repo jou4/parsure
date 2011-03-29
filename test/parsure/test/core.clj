@@ -1,4 +1,4 @@
-(ns parsure.test.maybe-parser
+(ns parsure.test.core
     (:use [clojure.test])
     (:use [parsure.core] :reload)
     (:require [parsure.monad-ext :as m]))

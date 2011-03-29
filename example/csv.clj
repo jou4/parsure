@@ -1,4 +1,4 @@
-(use 'parsure.core)
+(use 'parsure.core :reload)
 (require '[parsure.monad-ext :as m])
 
 (defn make-csv-line      [l] (list 'Line l))
