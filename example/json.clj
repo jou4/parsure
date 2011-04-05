@@ -11,6 +11,10 @@
 (declare parse-expr parse-symbol parse-atom parse-number
          parse-string parse-list parse-hash)
 
+
+(defparser spaces (skip-many space))
+(defparser natural (many1 digit))
+
 (defparser trim [p] (m/do [_ spaces
                            x p
                            _ spaces]
@@ -19,8 +23,8 @@
 (defparser parse-symbol (one-of "$"))
 
 (defparser parse-atom
-  (m/do [f (m/<|> letter parse-symbol)
-         r (many (m/<|> letter digit parse-symbol))]
+  (m/do [f (<|> letter parse-symbol)
+         r (many (<|> letter digit parse-symbol))]
         (let [at (apply str (cons f r))]
           (cond (= at "true") (make-json-bool true)
                 (= at "false") (make-json-bool false)
@@ -40,7 +44,7 @@
           (sep-by parse-expr (trim (ch \,)))))
 
 (defparser parse-pair
-  (m/do [n (m/<|> (parse-string \') (parse-string \") parse-atom)
+  (m/do [n (<|> (parse-string \') (parse-string \") parse-atom)
          _ (trim (ch \:))
          v parse-expr]
         (let [nm (nth n 1)]
@@ -51,22 +55,22 @@
           (sep-by parse-pair (trim (ch \,)))))
 
 (defparser parse-expr
-  (m/<|> parse-atom
-       parse-number
-       (parse-string \')
-       (parse-string \")
-       (m/do [_ (ch \[)
-              x parse-list
-              _ (ch \])]
-             x)
-       (m/do [_ (ch \{)
-              x parse-hash
-              _ (ch \})]
-             x)
-       (fail "Not matched any json-expression.")))
+  (<|> parse-atom
+     parse-number
+     (parse-string \')
+     (parse-string \")
+     (m/do [_ (ch \[)
+            x parse-list
+            _ (ch \])]
+           x)
+     (m/do [_ (ch \{)
+            x parse-hash
+            _ (ch \})]
+           x)))
 
 (defn run [s]
-  (parse-from-string parse-expr s))
+  (let [[lr ret] (parse parse-expr s)]
+    (if (= 'Left lr) (show ret) ret)))
 
 (def sample-string
   "[{name: \"Taro\", age: 12}, {name: \"Jiro\", age: 11}]")

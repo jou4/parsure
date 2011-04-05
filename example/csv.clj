@@ -7,10 +7,10 @@
 
 (defparser parse-quoted-inner
   (m/do [xs (many (none-of "\""))
-         xs2 (m/<|> (m/do [_ (string "\"\"")
-                           xs parse-quoted-inner]
-                          (str "\"" xs))
-                  (m/return ""))]
+         xs2 (<|> (m/do [_ (string "\"\"")
+                         xs parse-quoted-inner]
+                        (str "\"" xs))
+                (m/return ""))]
         (str (apply str xs) xs2)))
 
 (defparser parse-quoted
@@ -25,12 +25,14 @@
 
 (defparser parse-line
   (m/fmap make-csv-line
-          (sep-by1 (m/<|> parse-quoted parse-nonquoted) (ch \,))))
+          (sep-by1 (<|> parse-quoted parse-nonquoted) (ch \,))))
 
 (defparser parse-csv
   (sep-by1 parse-line (ch \newline)))
 
-(defn run [s] (parse-from-string parse-csv s))
+(defn run [s]
+  (let [[lr ret] (parse parse-csv s)]
+    (if (= 'Left lr) (show ret) ret)))
 
 (def sample-string "1,n0153,\"上司　和善\"\n2,n0154,\"山田 \"\"Razoku!!\"\" 大輔\"")
 (run sample-string)
