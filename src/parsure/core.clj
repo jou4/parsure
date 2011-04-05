@@ -36,7 +36,6 @@
 (defn set-parser-state [st] (update-parser-state (fn [_] st)))
 
 
-
 ;; Running parser
 (defn run-parser [p st cok cerr eok eerr]
   ((force p) st cok cerr eok eerr))
@@ -57,11 +56,14 @@
 
 ;; Parser monad
 (m/defmonad parser-m
-  [m-result (fn [x]
+  [
+   m-result (fn [x]
               (fn [st cok cerr eok eerr]
                 (eok x st (unknown-error st))))
+
    m-zero   (fn [st cok cerr eok eerr]
               (eerr (unknown-error st)))
+
    m-bind   (fn [m k]
               (fn [st cok cerr eok eerr]
                 (let [mcok  (fn [x st err]
@@ -79,6 +81,7 @@
                                 (run-parser (k x) st pcok pcerr peok peerr)))
                       meerr eerr]
                   (run-parser m st mcok mcerr meok meerr))))
+
    m-plus   (fn [m n]
               (fn [st cok cerr eok eerr]
                 (let [meerr
@@ -115,8 +118,7 @@
                               (partial walk (acc item coll))
                               cerr
                               many-err
-                              (fn [e]
-                                (cok (acc item coll) st- e))))]
+                              (fn [e] (cok (acc item coll) st- e))))]
       (run-parser p
                   st
                   (partial walk (seq []))
@@ -159,12 +161,12 @@
 
 
 (m/defmonadfn m-plus_ [& exprs]
-  (reduce
-    (fn [n p] (m-plus n p))
-    exprs))
+              (reduce
+                (fn [n p] (m-plus n p))
+                exprs))
 
-(defmacro <|>    [& mvs] `(m-plus_ ~@mvs))
-(defmacro <?>    [p msg] `(label ~p ~msg))
+(defmacro <|> [& mvs] `(m-plus_ ~@mvs))
+(defmacro <?> [p msg] `(label ~p ~msg))
 
 
 ;; Basic parser & combinators
@@ -172,11 +174,11 @@
 
   (defn get-position []
     (m/domonad [st (get-parser-state)]
-      (state-pos st)))
+               (state-pos st)))
 
   (defn get-input []
     (m/domonad [st (get-parser-state)]
-      (state-input st)))
+               (state-input st)))
 
   (defn set-position [pos]
     (update-parser-state
@@ -188,8 +190,8 @@
 
   (defn update-state [f]
     (m/m-fmap state-user
-            (update-parser-state
-              (fn [{:keys [input pos user]}] (State. input pos (f user))))))
+              (update-parser-state
+                (fn [{:keys [input pos user]}] (State. input pos (f user))))))
 
   (defn get-state [] (m/m-fmap state-user (get-parser-state)))
 
@@ -235,8 +237,8 @@
 
   (defn skip-many1 [p]
     (m/domonad [_ p
-              _ (skip-many p)]
-      nil))
+                _ (skip-many p)]
+               nil))
 
 
   (defn many [p]
@@ -244,8 +246,8 @@
 
   (defn many1 [p]
     (m/domonad [x  p
-              xs (many p)]
-      (cons x xs)))
+                xs (many p)]
+               (cons x xs)))
 
 
   (declare sep-by sep-by1)
@@ -255,27 +257,28 @@
 
   (defn sep-by1 [p sep]
     (m/domonad [x  p
-              xs (many (m/domonad [_  sep xs p] xs))]
-      (cons x xs)))
+                xs (many (m/domonad [_  sep xs p] xs))]
+               (cons x xs)))
 
 
   (defn end-by [p sep]
     (many (m/domonad [x p
-                    _ sep]
-            x)))
+                      _ sep]
+                     x)))
 
   (defn end-by1 [p sep]
     (many1 (m/domonad [x p
-                     _ sep]
-             x)))
+                       _ sep]
+                      x)))
 
 
   (defn string [s]
     (if (= 0 (count s))
       (m-result "")
-      (m/domonad [_ (ch (su/get s 0))
-                _ (string (su/drop s 1))]
-        s)))
+      ((ns-resolve *ns* 'try)
+         (m/domonad [_ (ch (su/get s 0))
+                     _ (string (su/drop s 1))]
+                    s))))
 
   )
 

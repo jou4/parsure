@@ -1,5 +1,4 @@
 (ns parsure.monad-ext
-  (:refer-clojure :exclude [do try])
   (:use [clojure.contrib.monads]))
 
 
