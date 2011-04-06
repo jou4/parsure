@@ -9,15 +9,15 @@
   (m/do [xs (many (none-of "\""))
          xs2 (<|> (m/do [_ (string "\"\"")
                          xs parse-quoted-inner]
-                        (str "\"" xs))
+                    (str "\"" xs))
                 (m/return ""))]
-        (str (apply str xs) xs2)))
+    (str (apply str xs) xs2)))
 
 (defparser parse-quoted
   (m/do [_ (ch \")
          x parse-quoted-inner
          _ (ch \")]
-        (make-csv-quoted x)))
+    (make-csv-quoted x)))
 
 (defparser parse-nonquoted
   (m/fmap #(make-csv-nonquoted (apply str %))

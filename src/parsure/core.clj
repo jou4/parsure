@@ -161,9 +161,9 @@
 
 
 (m/defmonadfn m-plus_ [& exprs]
-              (reduce
-                (fn [n p] (m-plus n p))
-                exprs))
+  (reduce
+    (fn [n p] (m-plus n p))
+    exprs))
 
 (defmacro <|> [& mvs] `(m-plus_ ~@mvs))
 (defmacro <?> [p msg] `(label ~p ~msg))
@@ -174,11 +174,11 @@
 
   (defn get-position []
     (m/domonad [st (get-parser-state)]
-               (state-pos st)))
+      (state-pos st)))
 
   (defn get-input []
     (m/domonad [st (get-parser-state)]
-               (state-input st)))
+      (state-input st)))
 
   (defn set-position [pos]
     (update-parser-state
@@ -238,7 +238,7 @@
   (defn skip-many1 [p]
     (m/domonad [_ p
                 _ (skip-many p)]
-               nil))
+      nil))
 
 
   (defn many [p]
@@ -247,7 +247,7 @@
   (defn many1 [p]
     (m/domonad [x  p
                 xs (many p)]
-               (cons x xs)))
+      (cons x xs)))
 
 
   (declare sep-by sep-by1)
@@ -258,18 +258,18 @@
   (defn sep-by1 [p sep]
     (m/domonad [x  p
                 xs (many (m/domonad [_  sep xs p] xs))]
-               (cons x xs)))
+      (cons x xs)))
 
 
   (defn end-by [p sep]
     (many (m/domonad [x p
                       _ sep]
-                     x)))
+            x)))
 
   (defn end-by1 [p sep]
     (many1 (m/domonad [x p
                        _ sep]
-                      x)))
+             x)))
 
 
   (defn string [s]
@@ -278,7 +278,7 @@
       ((ns-resolve *ns* 'try)
          (m/domonad [_ (ch (su/get s 0))
                      _ (string (su/drop s 1))]
-                    s))))
+           s))))
 
   )
 

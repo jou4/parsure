@@ -18,17 +18,17 @@
 (defparser trim [p] (m/do [_ spaces
                            x p
                            _ spaces]
-                          x))
+                      x))
 
 (defparser parse-symbol (one-of "$"))
 
 (defparser parse-atom
   (m/do [f (<|> letter parse-symbol)
          r (many (<|> letter digit parse-symbol))]
-        (let [at (apply str (cons f r))]
-          (cond (= at "true") (make-json-bool true)
-                (= at "false") (make-json-bool false)
-                :else (make-json-atom at)))))
+    (let [at (apply str (cons f r))]
+      (cond (= at "true") (make-json-bool true)
+            (= at "false") (make-json-bool false)
+            :else (make-json-atom at)))))
 
 (defparser parse-number
   (m/fmap make-json-number natural))
@@ -37,7 +37,7 @@
   (m/do [_ (ch qt)
          x (many (none-of (str qt)))
          _ (ch qt)]
-        (make-json-string (apply str x))))
+    (make-json-string (apply str x))))
 
 (defparser parse-list
   (m/fmap make-json-list
@@ -47,8 +47,8 @@
   (m/do [n (<|> (parse-string \') (parse-string \") parse-atom)
          _ (trim (ch \:))
          v parse-expr]
-        (let [nm (nth n 1)]
-          (list nm v))))
+    (let [nm (nth n 1)]
+      (list nm v))))
 
 (defparser parse-hash
   (m/fmap make-json-hash
@@ -62,11 +62,11 @@
      (m/do [_ (ch \[)
             x parse-list
             _ (ch \])]
-           x)
+       x)
      (m/do [_ (ch \{)
             x parse-hash
             _ (ch \})]
-           x)))
+       x)))
 
 (defn run [s]
   (let [[lr ret] (parse parse-expr s)]

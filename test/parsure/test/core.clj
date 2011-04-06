@@ -22,17 +22,17 @@
 (defparser p1 (m/do [x any-token
                      _ any-token
                      y any-token]
-                    (str x y)))
+                (str x y)))
 (defparser p2 (m/do [x m-zero
                      _ any-token
                      y any-token]
-                    (str x y)))
+                (str x y)))
 (defparser p3 (m/do [x (m/do [x any-token
                               _ any-token
                               y any-token]
-                             (str x y))
+                         (str x y))
                      y any-token]
-                    (str y x)))
+                (str y x)))
 
 (deftest test-monad
   (is (check= (p- p1 "abcde") "ac"))
