@@ -1,14 +1,25 @@
 (ns parsure.core
+  (:refer-clojure :exclude [char])
   (:use [parsure.pos]
         [parsure.error])
-  (:require [clojure.contrib.str-utils2 :as su]
-            [clojure.contrib.monads :as m]
-            [parsure.monad-ext :as me]))
+  (:require [clojure.contrib.monads :as m]
+            [parsure.monad-ext :as me]
+            [clojure.contrib.duck-streams :as ds]
+            [clojure.contrib.stream-utils :as su]))
 
 
+;; Show protocol
 (defprotocol Show (show [this]))
 (extend-protocol Show java.lang.Character (show [c] (str \\ c)))
 (extend-protocol Show parsure.error.ParseError (show [err] (show-error err)))
+
+
+;; Stream
+(su/defstream java.io.BufferedReader [s]
+  (let [code (.read s)]
+    (if (< code 0)
+      [nil nil]
+      [(clojure.core/char code) s])))
 
 
 ;; ParseError
@@ -46,6 +57,12 @@
         eok  (fn [x st err] (list 'Right x))      ; Empty    & OK
         eerr (fn [err]      (list 'Left err))]    ; Empty    & Error
     (run-parser p (initial-state inp) cok cerr eok eerr)))
+
+;; read from anything which clojure.contrib.duck-streams can convert reader
+(defn parse-from-any [p any]
+  (parse p (su/stream-seq (ds/reader any))))
+
+(defn parse-from-file [p path] (parse-from-any p path))
 
 
 ;; Define parser combinator
@@ -100,8 +117,8 @@
           user  (state-user  st)]
       (if (empty? input)
         (eerr (unexpect-error "" pos))
-        (let [item   (su/get input 0)
-              remain (su/drop input 1)]
+        (let [item   (first input)
+              remain (rest  input)]
           (if (consume? item)
             (let [newpos (next-pos pos item remain)
                   newst  (State. remain newpos user)]
@@ -211,7 +228,7 @@
   (def eof (<?> (not-followed-by any-token) "end of input"))
 
 
-  (defn ch [c] (<?> (satisfy #(= c %)) (show c)))
+  (defn char [c] (<?> (satisfy #(= c %)) (show c)))
 
   (defn- digit?  [c] (Character/isDigit c))
   (defn- lower?  [c] (Character/isLowerCase c))
@@ -227,9 +244,8 @@
   (def alpha-num (<?> (satisfy #(or (digit? %) (letter? %))) "letter or digit"))
 
 
-  (defn one-of [s] (satisfy #(su/contains? s (str %))))
-
-  (defn none-of [s] (satisfy #(not (su/contains? s (str %)))))
+  (defn one-of  [s] (satisfy #((set s) %)))
+  (defn none-of [s] (satisfy #(nil? ((set s) %))))
 
 
   (defn skip-many [p]
@@ -275,10 +291,9 @@
   (defn string [s]
     (if (= 0 (count s))
       (m-result "")
-      ((ns-resolve *ns* 'try)
-         (m/domonad [_ (ch (su/get s 0))
-                     _ (string (su/drop s 1))]
+      (parsure.core/try
+         (m/domonad [_ (char (first s))
+                     _ (string (rest s))]
            s))))
 
   )
-

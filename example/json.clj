@@ -1,5 +1,8 @@
-(use 'parsure.core :reload)
-(require '[parsure.monad-ext :as m])
+(ns example-json
+  (:refer-clojure :exclude [char])
+  (:use [parsure.core] :reload)
+  (:require [parsure.monad-ext :as m]))
+
 
 (defn make-json-atom   [s] (list 'Atom s))
 (defn make-json-number [i] (list 'Number i))
@@ -7,6 +10,7 @@
 (defn make-json-bool   [b] (list 'Bool b))
 (defn make-json-list   [l] (list 'List l))
 (defn make-json-hash   [h] (list 'Hash h))
+
 
 (declare parse-expr parse-symbol parse-atom parse-number
          parse-string parse-list parse-hash)
@@ -34,38 +38,38 @@
   (m/fmap make-json-number natural))
 
 (defparser parse-string [qt]
-  (m/do [_ (ch qt)
+  (m/do [_ (char qt)
          x (many (none-of (str qt)))
-         _ (ch qt)]
+         _ (char qt)]
     (make-json-string (apply str x))))
 
 (defparser parse-list
   (m/fmap make-json-list
-          (sep-by parse-expr (trim (ch \,)))))
+          (sep-by parse-expr (trim (char \,)))))
 
 (defparser parse-pair
   (m/do [n (<|> (parse-string \') (parse-string \") parse-atom)
-         _ (trim (ch \:))
+         _ (trim (char \:))
          v parse-expr]
     (let [nm (nth n 1)]
       (list nm v))))
 
 (defparser parse-hash
   (m/fmap make-json-hash
-          (sep-by parse-pair (trim (ch \,)))))
+          (sep-by parse-pair (trim (char \,)))))
 
 (defparser parse-expr
   (<|> parse-atom
      parse-number
      (parse-string \')
      (parse-string \")
-     (m/do [_ (ch \[)
+     (m/do [_ (char \[)
             x parse-list
-            _ (ch \])]
+            _ (char \])]
        x)
-     (m/do [_ (ch \{)
+     (m/do [_ (char \{)
             x parse-hash
-            _ (ch \})]
+            _ (char \})]
        x)))
 
 (defn run [s]

@@ -1,4 +1,5 @@
 (ns parsure.test.core
+  (:refer-clojure :exclude [char])
   (:use [clojure.test])
   (:use [parsure.core] :reload)
   (:require [parsure.monad-ext :as m]))
@@ -50,8 +51,8 @@
 (defparser spaces (skip-many space))
 
 (deftest test-parts
-  (is (check= (p- (ch \a) "abc") \a))
-  (is (checkf (p- (ch \a) "123")))
+  (is (check= (p- (char \a) "abc") \a))
+  (is (checkf (p- (char \a) "123")))
   (is (check= (p- digit "123") \1))
   (is (checkf (p- digit "abc")))
   (is (check= (p- lower "abc") \a))

@@ -1,9 +1,13 @@
-(use 'parsure.core :reload)
-(require '[parsure.monad-ext :as m])
+(ns example-csv
+  (:refer-clojure :exclude [char])
+  (:use [parsure.core] :reload)
+  (:require [parsure.monad-ext :as m]))
+
 
 (defn make-csv-line      [l] (list 'Line l))
 (defn make-csv-quoted    [s] (list 'Quoted s))
 (defn make-csv-nonquoted [s] (list 'Non-quoted s))
+
 
 (defparser parse-quoted-inner
   (m/do [xs (many (none-of "\""))
@@ -14,9 +18,9 @@
     (str (apply str xs) xs2)))
 
 (defparser parse-quoted
-  (m/do [_ (ch \")
+  (m/do [_ (char \")
          x parse-quoted-inner
-         _ (ch \")]
+         _ (char \")]
     (make-csv-quoted x)))
 
 (defparser parse-nonquoted
@@ -25,10 +29,10 @@
 
 (defparser parse-line
   (m/fmap make-csv-line
-          (sep-by1 (<|> parse-quoted parse-nonquoted) (ch \,))))
+          (sep-by1 (<|> parse-quoted parse-nonquoted) (char \,))))
 
 (defparser parse-csv
-  (sep-by1 parse-line (ch \newline)))
+  (sep-by1 parse-line (char \newline)))
 
 (defn run [s]
   (let [[lr ret] (parse parse-csv s)]
