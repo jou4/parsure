@@ -16,8 +16,8 @@
          parse-string parse-list parse-hash)
 
 
-(defparser spaces (skip-many space))
-(defparser natural (many1 digit))
+(defparser spaces (skip-many (satisfy #(Character/isWhitespace %))))
+(defparser natural (m/fmap #(Integer/parseInt (apply str %)) (many1 digit)))
 
 (defparser trim [p] (m/do [_ spaces
                            x p
@@ -35,28 +35,28 @@
             :else (make-json-atom at)))))
 
 (defparser parse-number
-  (m/fmap make-json-number natural))
+  (m/fmap make-json-number (trim natural)))
 
 (defparser parse-string [qt]
-  (m/do [_ (char qt)
-         x (many (none-of (str qt)))
-         _ (char qt)]
-    (make-json-string (apply str x))))
+  (trim (m/do [_ (char qt)
+               x (many (none-of (str qt)))
+               _ (char qt)]
+          (make-json-string (apply str x)))))
 
 (defparser parse-list
-  (m/fmap make-json-list
-          (sep-by parse-expr (trim (char \,)))))
+  (trim (m/fmap make-json-list
+                (sep-by parse-expr (trim (char \,))))))
 
 (defparser parse-pair
-  (m/do [n (<|> (parse-string \') (parse-string \") parse-atom)
-         _ (trim (char \:))
-         v parse-expr]
-    (let [nm (nth n 1)]
-      (list nm v))))
+  (trim (m/do [n (<|> (parse-string \') (parse-string \") parse-atom)
+               _ (trim (char \:))
+               v parse-expr]
+          (let [nm (nth n 1)]
+            (list nm v)))))
 
 (defparser parse-hash
-  (m/fmap make-json-hash
-          (sep-by parse-pair (trim (char \,)))))
+  (trim (m/fmap make-json-hash
+                (sep-by parse-pair (trim (char \,))))))
 
 (defparser parse-expr
   (<|> parse-atom

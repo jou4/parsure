@@ -49,14 +49,14 @@
 
 ;; Running parser
 (defn run-parser [p st cok cerr eok eerr]
-  ((force p) st cok cerr eok eerr))
+  #((force p) st cok cerr eok eerr))
 
 (defn parse [p inp]
   (let [cok  (fn [x st err] (list 'Right x))      ; Consumed & OK
         cerr (fn [err]      (list 'Left err))     ; Comsumed & Error
         eok  (fn [x st err] (list 'Right x))      ; Empty    & OK
         eerr (fn [err]      (list 'Left err))]    ; Empty    & Error
-    (run-parser p (initial-state inp) cok cerr eok eerr)))
+    (trampoline run-parser p (initial-state inp) cok cerr eok eerr)))
 
 ;; read from anything which clojure.contrib.duck-streams can convert reader
 (defn parse-from-any [p any]
@@ -292,8 +292,8 @@
     (if (= 0 (count s))
       (m-result "")
       (parsure.core/try
-         (m/domonad [_ (char (first s))
-                     _ (string (rest s))]
-           s))))
+        (m/domonad [_ (char (first s))
+                    _ (string (rest s))]
+          s))))
 
   )
