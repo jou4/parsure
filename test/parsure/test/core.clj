@@ -1,7 +1,7 @@
 (ns parsure.test.core
-  (:refer-clojure :exclude [char])
+  (:refer-clojure :exclude [char count])
   (:use [clojure.test])
-  (:use [parsure.core] :reload)
+  (:use [parsure core char combinator] :reload)
   (:require [parsure.monad-ext :as m]))
 
 (defmacro p- [p s]
@@ -50,7 +50,7 @@
 (defparser natural (m/fmap #(Integer/parseInt (apply str %))  (many1 digit)))
 (defparser spaces (skip-many space))
 
-(deftest test-parts
+(deftest test-char
   (is (check= (p- (char \a) "abc") \a))
   (is (checkf (p- (char \a) "123")))
   (is (check= (p- digit "123") \1))
@@ -80,4 +80,3 @@
   (is (check= (p- natural "123abc") 123))
   (is (checkf (p- natural "abc123")))
   (is (check= (p- (m/>> spaces natural) "   123abc") 123)))
-

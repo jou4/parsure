@@ -1,6 +1,6 @@
-(ns example-csv
-  (:refer-clojure :exclude [char])
-  (:use [parsure.core] :reload)
+(ns parsure.example.csv
+  (:refer-clojure :exclude [char count])
+  (:use [parsure core char combinator] :reload)
   (:require [parsure.monad-ext :as m]))
 
 

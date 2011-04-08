@@ -1,6 +1,6 @@
-(ns example-json
-  (:refer-clojure :exclude [char])
-  (:use [parsure.core] :reload)
+(ns parsure.example.json
+  (:refer-clojure :exclude [char count])
+  (:use [parsure core char combinator] :reload)
   (:require [parsure.monad-ext :as m]))
 
 
@@ -27,8 +27,8 @@
 (defparser parse-symbol (one-of "$"))
 
 (defparser parse-atom
-  (m/do [f (<|> letter parse-symbol)
-         r (many (<|> letter digit parse-symbol))]
+  (m/do [f (choice letter parse-symbol)
+         r (many (choice letter digit parse-symbol))]
     (let [at (apply str (cons f r))]
       (cond (= at "true") (make-json-bool true)
             (= at "false") (make-json-bool false)
@@ -48,7 +48,7 @@
                 (sep-by parse-expr (trim (char \,))))))
 
 (defparser parse-pair
-  (trim (m/do [n (<|> (parse-string \') (parse-string \") parse-atom)
+  (trim (m/do [n (choice (parse-string \') (parse-string \") parse-atom)
                _ (trim (char \:))
                v parse-expr]
           (let [nm (nth n 1)]
@@ -59,18 +59,18 @@
                 (sep-by parse-pair (trim (char \,))))))
 
 (defparser parse-expr
-  (<|> parse-atom
-     parse-number
-     (parse-string \')
-     (parse-string \")
-     (m/do [_ (char \[)
-            x parse-list
-            _ (char \])]
-       x)
-     (m/do [_ (char \{)
-            x parse-hash
-            _ (char \})]
-       x)))
+  (choice parse-atom
+          parse-number
+          (parse-string \')
+          (parse-string \")
+          (m/do [_ (char \[)
+                 x parse-list
+                 _ (char \])]
+            x)
+          (m/do [_ (char \{)
+                 x parse-hash
+                 _ (char \})]
+            x)))
 
 (defn run [s]
   (let [[lr ret] (parse parse-expr s)]

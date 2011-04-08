@@ -1,5 +1,5 @@
 (ns parsure.core
-  (:refer-clojure :exclude [char])
+  (:refer-clojure :exclude [count])
   (:use [parsure.pos]
         [parsure.error])
   (:require [clojure.contrib.monads :as m]
@@ -147,7 +147,7 @@
   (fn [st cok cerr eok eerr]
     (letfn [(pcok [x st- err] (eerr (new-error-message (list 'UnExpect (show x))
                                                        (state-pos st))))
-            (peerr [err] (cok nil st))]
+            (peerr [err] (cok nil st nil))]
       (run-parser p st pcok cerr eok peerr))))
 
 (defn try [p]
@@ -161,7 +161,7 @@
 
 (defn- set-expect-errors [err msgs]
   (cond (empty? msgs) (set-error-pos (list 'Expect "") err)
-        (= 1 (count msgs)) (set-error-message (list 'Expect (first msgs)) err)
+        (= 1 (clojure.core/count msgs)) (set-error-message (list 'Expect (first msgs)) err)
         :else (let [fmsg (first msgs)
                     rmsgs (reverse (rest msgs))]
                 (reduce (fn [err- msg-] (add-error-message (list 'Expect msg-) err-))
@@ -177,16 +177,11 @@
       (run-parser p st cok cerr peok peerr))))
 
 
-(m/defmonadfn m-plus_ [& exprs]
-  (reduce
-    (fn [n p] (m-plus n p))
-    exprs))
-
-(defmacro <|> [& mvs] `(m-plus_ ~@mvs))
+(m/defmonadfn <|> [p q] (m-plus p q))
 (defmacro <?> [p msg] `(label ~p ~msg))
 
 
-;; Basic parser & combinators
+;; Parser state combinators
 (m/with-monad parser-m
 
   (defn get-position []
@@ -214,86 +209,5 @@
 
   (defn set-state [user]
     (update-state (fn [_] user)))
-
-  (defn satisfy [pred]
-    (token-prim show
-                (fn [pos c cs] (update-pos-char pos c))
-                (fn [c] (if (pred c) c nil))))
-
-  (def any-token
-    (token-prim show
-                (fn [pos c cs] pos)
-                (fn [c] true)))
-
-  (def eof (<?> (not-followed-by any-token) "end of input"))
-
-
-  (defn char [c] (<?> (satisfy #(= c %)) (show c)))
-
-  (defn- digit?  [c] (Character/isDigit c))
-  (defn- lower?  [c] (Character/isLowerCase c))
-  (defn- upper?  [c] (Character/isUpperCase c))
-  (defn- letter? [c] (Character/isLetter c))
-  (defn- space?  [c] (Character/isSpace c))
-
-  (def digit     (<?> (satisfy digit?) "digit"))
-  (def lower     (<?> (satisfy lower?) "lowercase letter"))
-  (def upper     (<?> (satisfy upper?) "uppercase letter"))
-  (def letter    (<?> (satisfy letter?) "letter"))
-  (def space     (<?> (satisfy space?) "space"))
-  (def alpha-num (<?> (satisfy #(or (digit? %) (letter? %))) "letter or digit"))
-
-
-  (defn one-of  [s] (satisfy #((set s) %)))
-  (defn none-of [s] (satisfy #(nil? ((set s) %))))
-
-
-  (defn skip-many [p]
-    (m/domonad [_ (many-accum cons p)] nil))
-
-  (defn skip-many1 [p]
-    (m/domonad [_ p
-                _ (skip-many p)]
-      nil))
-
-
-  (defn many [p]
-    (m/domonad [xs (many-accum cons p)] (reverse xs)))
-
-  (defn many1 [p]
-    (m/domonad [x  p
-                xs (many p)]
-      (cons x xs)))
-
-
-  (declare sep-by sep-by1)
-
-  (defn sep-by [p sep]
-    (m-plus (sep-by1 p sep) (m-result [])))
-
-  (defn sep-by1 [p sep]
-    (m/domonad [x  p
-                xs (many (m/domonad [_  sep xs p] xs))]
-      (cons x xs)))
-
-
-  (defn end-by [p sep]
-    (many (m/domonad [x p
-                      _ sep]
-            x)))
-
-  (defn end-by1 [p sep]
-    (many1 (m/domonad [x p
-                       _ sep]
-             x)))
-
-
-  (defn string [s]
-    (if (= 0 (count s))
-      (m-result "")
-      (parsure.core/try
-        (m/domonad [_ (char (first s))
-                    _ (string (rest s))]
-          s))))
 
   )
