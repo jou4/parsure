@@ -3,7 +3,6 @@
   (:use [parsure core char combinator] :reload)
   (:require [parsure.monad-ext :as m]))
 
-
 (defn make-json-atom   [s] (list 'Atom s))
 (defn make-json-number [i] (list 'Number i))
 (defn make-json-string [s] (list 'String s))

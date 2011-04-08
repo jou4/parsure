@@ -70,6 +70,34 @@
       (m-result nil)
       (m/m-seq (replicate n p))))
 
+  (declare chainl chainl1)
+
+  (defn chainl [p op x] (<|> (chainl1 p op) (m-result x)))
+
+  (defn chainl1 [p op]
+    (letfn [(restp [x] (<|> (m/domonad [f op
+                                        y p
+                                        res (restp (f x y))]
+                              res)
+                          (m-result x)))]
+      (m/domonad [x p
+                  res (restp x)]
+        res)))
+
+  (declare chainr chainr1)
+
+  (defn chainr [p op x] (<|> (chainr1 p op) (m-result x)))
+
+  (defn chainr1 [p op]
+    (letfn [(scanp [] (m/domonad [x p
+                                  res (restp x)]
+                        res))
+            (restp [x] (<|> (m/domonad [f op
+                                        y (scanp)]
+                              (f x y))
+                          (m-result x)))]
+      (scanp)))
+
   (def any-token
     (token-prim show
                 (fn [pos c cs] pos)

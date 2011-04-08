@@ -1,7 +1,6 @@
 (ns parsure.monad-ext
   (:use [clojure.contrib.monads]))
 
-
 ;; Monad function alias
 (defmonadfn m-bind_ [& steps]
   (reduce

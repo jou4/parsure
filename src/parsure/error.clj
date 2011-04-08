@@ -1,7 +1,6 @@
 (ns parsure.error
   (:use [parsure.pos]))
 
-
 (defrecord ParseError [pos msgs])
 
 (defn- from-enum [[err-type _]]
@@ -62,4 +61,6 @@
                   " : \n - "
                   (if (empty? msgs)
                     "unknown parser error"
-                    (apply str (interpose "\n - " (filter #(not (empty? %)) [show-expect show-unexpect show-sys-unexpect show-messages]))))))))
+                    (apply str (interpose "\n - "
+                                          (filter #(not (empty? %))
+                                                  [show-expect show-unexpect show-sys-unexpect show-messages]))))))))

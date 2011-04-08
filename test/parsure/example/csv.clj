@@ -3,7 +3,6 @@
   (:use [parsure core char combinator] :reload)
   (:require [parsure.monad-ext :as m]))
 
-
 (defn make-csv-line      [l] (list 'Line l))
 (defn make-csv-quoted    [s] (list 'Quoted s))
 (defn make-csv-nonquoted [s] (list 'Non-quoted s))

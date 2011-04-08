@@ -1,12 +1,9 @@
 (ns parsure.core
-  (:refer-clojure :exclude [count])
-  (:use [parsure.pos]
-        [parsure.error])
+  (:use [parsure pos error])
   (:require [clojure.contrib.monads :as m]
             [parsure.monad-ext :as me]
             [clojure.contrib.duck-streams :as ds]
             [clojure.contrib.stream-utils :as su]))
-
 
 ;; Show protocol
 (defprotocol Show (show [this]))
@@ -207,7 +204,6 @@
 
   (defn get-state [] (m/m-fmap state-user (get-parser-state)))
 
-  (defn set-state [user]
-    (update-state (fn [_] user)))
+  (defn set-state [user] (update-state (fn [_] user)))
 
   )
