@@ -15,12 +15,12 @@
          parse-string parse-list parse-hash)
 
 
-(defparser spaces (skip-many (satisfy #(Character/isWhitespace %))))
+(defparser whitespaces (skip-many (satisfy #(Character/isWhitespace %))))
 (defparser natural (m/fmap #(Integer/parseInt (apply str %)) (many1 digit)))
 
-(defparser trim [p] (m/do [_ spaces
+(defparser trim [p] (m/do [_ whitespaces
                            x p
-                           _ spaces]
+                           _ whitespaces]
                       x))
 
 (defparser parse-symbol (one-of "$"))

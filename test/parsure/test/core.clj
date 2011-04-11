@@ -5,7 +5,7 @@
   (:require [parsure.monad-ext :as m]))
 
 (defmacro p- [p s]
-  `(clojure.contrib.monads/with-monad parser-m (parse ~p ~s)))
+  `(parse ~p ~s))
 (defn check [ret pred]
   (pred ret))
 (defn check= [ret expected]
@@ -48,7 +48,6 @@
   (is (checkf (p- (<|> (unexpected "fail") (unexpected "fail")) "abcde"))))
 
 (defparser natural (m/fmap #(Integer/parseInt (apply str %))  (many1 digit)))
-(defparser spaces (skip-many space))
 
 (deftest test-char
   (is (check= (p- (char \a) "abc") \a))

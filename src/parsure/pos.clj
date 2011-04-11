@@ -1,18 +1,24 @@
-(ns parsure.pos)
+(ns parsure.pos
+  (:refer-clojure :exclude [name]))
 
 
-(defrecord SourcePos [line column])
+(defrecord SourcePos [name line column])
 
-(defn new-pos [line column] (SourcePos. line column))
-(defn initial-pos [] (SourcePos. 1 1))
+(defn new-pos [name line column] (SourcePos. name line column))
+(defn initial-pos [name] (SourcePos. name 1 1))
 
+(def source-name :name)
 (def source-line :line)
 (def source-column :column)
 
 (defn update-pos-char [^SourcePos pos c]
   (if (= c \newline)
-    (SourcePos. (inc (source-line pos)) 1)
-    (SourcePos. (source-line pos) (inc (source-column pos)))))
+    (SourcePos. (source-name pos) (inc (source-line pos)) 1)
+    (SourcePos. (source-name pos) (source-line pos) (inc (source-column pos)))))
 
 (defn show-pos [^SourcePos pos]
-  (str "(line " (source-line pos) ", column " (source-column pos) ")"))
+  (let [name (source-name pos)]
+    (str (if (empty? name)
+           ""
+           (str "\"" name "\" "))
+         (str "(line " (source-line pos) ", column " (source-column pos) ")"))))

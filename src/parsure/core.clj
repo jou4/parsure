@@ -28,7 +28,7 @@
 ;; State
 (defrecord State [input ^parsure.pos.SourcePos pos user])
 
-(defn initial-state [input] (State. input (initial-pos) nil))
+(defn initial-state [name input] (State. input (initial-pos name) nil))
 
 (def state-input :input)
 (def state-pos   :pos)
@@ -48,18 +48,23 @@
 (defn run-parser [p st cok cerr eok eerr]
   #((force p) st cok cerr eok eerr))
 
-(defn parse [p inp]
+(defn do-parse [p name inp]
   (let [cok  (fn [x st err] (list 'Right x))      ; Consumed & OK
         cerr (fn [err]      (list 'Left err))     ; Comsumed & Error
         eok  (fn [x st err] (list 'Right x))      ; Empty    & OK
         eerr (fn [err]      (list 'Left err))]    ; Empty    & Error
-    (trampoline run-parser p (initial-state inp) cok cerr eok eerr)))
+    (trampoline run-parser p (initial-state name inp) cok cerr eok eerr)))
+
+(defmacro parse
+  ([p inp] `(parse ~p "" ~inp))
+  ([p name inp] `(m/with-monad parser-m (do-parse ~p ~name ~inp))))
 
 ;; read from anything which clojure.contrib.duck-streams can convert reader
-(defn parse-from-any [p any]
-  (parse p (su/stream-seq (ds/reader any))))
+(defmacro parse-from-any
+  ([p any] `(parse-from-any ~p "" ~any))
+  ([p name any] `(parse ~p ~name (su/stream-seq (ds/reader ~any)))))
 
-(defn parse-from-file [p path] (parse-from-any p path))
+(defmacro parse-from-file [p path] `(parse-from-any ~p ~path ~path))
 
 
 ;; Define parser combinator
