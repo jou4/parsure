@@ -13,10 +13,10 @@
 
 ;; Stream
 (su/defstream java.io.BufferedReader [s]
-  (let [code (.read s)]
-    (if (< code 0)
+  (let [line (.readLine s)]
+    (if (nil? line)
       [nil nil]
-      [(clojure.core/char code) s])))
+      [(str line \newline) s])))
 
 
 ;; ParseError
@@ -45,7 +45,7 @@
 
 
 ;; Running parser
-(defn run-parser [p st cok cerr eok eerr]
+(defn run-parser [p ^State st cok cerr eok eerr]
   #((force p) st cok cerr eok eerr))
 
 (defn do-parse [p name inp]
@@ -62,7 +62,7 @@
 ;; read from anything which clojure.contrib.duck-streams can convert reader
 (defmacro parse-from-any
   ([p any] `(parse-from-any ~p "" ~any))
-  ([p name any] `(parse ~p ~name (su/stream-seq (ds/reader ~any)))))
+  ([p name any] `(parse ~p ~name (su/stream-seq (su/stream-flatten (ds/reader ~any))))))
 
 (defmacro parse-from-file [p path] `(parse-from-any ~p ~path ~path))
 
