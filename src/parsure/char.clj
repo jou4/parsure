@@ -1,7 +1,7 @@
 (ns parsure.char
   (:refer-clojure :exclude [char])
   (:use [parsure core pos [combinator :only [skip-many]]])
-  (:require [clojure.contrib.monads :as m]))
+  (:require [clojure.algo.monads :as m]))
 
 (m/with-monad parser-m
 

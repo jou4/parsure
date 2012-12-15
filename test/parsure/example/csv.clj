@@ -37,5 +37,5 @@
   (let [[lr ret] (parse parse-csv s)]
     (if (= 'Left lr) (show ret) ret)))
 
-(def sample-string "1,n0153,\"上司　和善\"\n2,n0154,\"山田 \"\"Razoku!!\"\" 大輔\"")
+(def sample-string "1,n0153,\"鈴木　一郎\"\n2,n0154,\"山田 \"\"Keyton\"\" 大輔\"")
 (run sample-string)

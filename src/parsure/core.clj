@@ -1,9 +1,8 @@
 (ns parsure.core
   (:use [parsure pos error])
-  (:require [clojure.contrib.monads :as m]
+  (:require [clojure.algo.monads :as m]
             [parsure.monad-ext :as me]
-            [clojure.contrib.duck-streams :as ds]
-            [clojure.contrib.stream-utils :as su]))
+            [clojure.java.io :as io]))
 
 ;; Show protocol
 (defprotocol Show (show [this]))
@@ -12,11 +11,41 @@
 
 
 ;; Stream
-(su/defstream java.io.BufferedReader [s]
-  (let [line (.readLine s)]
-    (if (nil? line)
-      [nil nil]
-      [(str line \newline) s])))
+(defprotocol stream-protocol
+  (stream-next [s]))
+
+(defn stream-seq [s]
+  (lazy-seq
+    (let [[v ns] (stream-next s)]
+      (if (nil? ns)
+        nil
+        (cons v (stream-seq ns))))))
+
+(extend-protocol stream-protocol
+  java.io.BufferedReader
+  (stream-next [s]
+               (let [line (.readLine s)]
+                 (if (nil? line)
+                   (do (.close s) [nil nil])
+                   [(str line \newline) s]))))
+
+(deftype StreamFlattenState [buffer stream])
+
+(extend-protocol stream-protocol
+  parsure.core.StreamFlattenState
+  (stream-next [state]
+               (let [buffer (.buffer state)
+                     stream (.stream state)]
+                 (loop [b buffer
+                        s stream]
+                   (if (nil? b)
+                     (let [[v new-stream] (stream-next stream)]
+                       (cond (nil? new-stream) [nil nil]
+                             (empty? v) (recur nil new-stream)
+                             :else (recur v new-stream)))
+                     [(first b) (StreamFlattenState. (next b) s)])))))
+
+(defn stream-flatten [s] (StreamFlattenState. nil s))
 
 
 ;; ParseError
@@ -59,10 +88,10 @@
   ([p inp] `(parse ~p "" ~inp))
   ([p name inp] `(m/with-monad parser-m (do-parse ~p ~name ~inp))))
 
-;; read from anything which clojure.contrib.duck-streams can convert reader
+;; read from anything
 (defmacro parse-from-any
   ([p any] `(parse-from-any ~p "" ~any))
-  ([p name any] `(parse ~p ~name (su/stream-seq (su/stream-flatten (ds/reader ~any))))))
+  ([p name any] `(parse ~p ~name (stream-seq (stream-flatten (io/reader ~any))))))
 
 (defmacro parse-from-file [p path] `(parse-from-any ~p ~path ~path))
 

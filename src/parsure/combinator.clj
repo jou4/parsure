@@ -1,7 +1,7 @@
 (ns parsure.combinator
   (:refer-clojure :exclude [count])
   (:use [parsure.core])
-  (:require [clojure.contrib.monads :as m]))
+  (:require [clojure.algo.monads :as m]))
 
 (m/with-monad parser-m
 
