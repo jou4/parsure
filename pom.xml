@@ -4,7 +4,7 @@
   <groupId>parsure</groupId>
   <artifactId>parsure</artifactId>
   <packaging>jar</packaging>
-  <version>0.0.1</version>
+  <version>0.1.0</version>
   <name>parsure</name>
   <description>Text parser combinator library like Parsec.</description>
   <licenses>
@@ -17,7 +17,7 @@
   <scm>
     <connection>scm:git:git://github.com/jou4/parsure.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/jou4/parsure.git</developerConnection>
-    <tag>06a027953c0809ae983e26ca2049356ee8af3d5d</tag>
+    <tag>a10a5105a7ba810f8a14bf1d7925ea50d1d27b1d</tag>
     <url>https://github.com/jou4/parsure</url>
   </scm>
   <build>
