@@ -84,16 +84,13 @@
         eerr (fn [err]      (list 'Left err))]    ; Empty    & Error
     (trampoline run-parser p (initial-state name inp) cok cerr eok eerr)))
 
+
 (defmacro parse
   ([p inp] `(parse ~p "" ~inp))
   ([p name inp] `(m/with-monad parser-m (do-parse ~p ~name ~inp))))
 
-;; read from anything
-(defmacro parse-from-any
-  ([p any] `(parse-from-any ~p "" ~any))
-  ([p name any] `(parse ~p ~name (stream-seq (stream-flatten (io/reader ~any))))))
-
-(defmacro parse-from-file [p path] `(parse-from-any ~p ~path ~path))
+(defmacro parse-from-file [p path & opts] 
+  `(parse ~p ~path (stream-seq (stream-flatten (io/reader ~path ~@opts)))))
 
 
 ;; Define parser combinator

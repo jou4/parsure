@@ -33,9 +33,9 @@
 (defparser parse-csv
   (sep-by1 parse-line (char \newline)))
 
-(defn run [s]
-  (let [[lr ret] (parse parse-csv s)]
-    (if (= 'Left lr) (show ret) ret)))
+(defmacro run [s & opts]
+  `(let [[lr# ret#] (parse-from-file parse-csv ~s ~@opts)]
+    (if (= 'Left lr#) (show ret#) ret#)))
 
-(def sample-string "1,n0153,\"鈴木　一郎\"\n2,n0154,\"山田 \"\"Keyton\"\" 大輔\"")
-(run sample-string)
+(run "test/parsure/example/utf8.csv" :encoding "UTF-8")
+(run "test/parsure/example/sjis.csv" :encoding "Shift_JIS")
